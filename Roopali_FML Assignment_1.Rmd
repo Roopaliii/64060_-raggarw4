@@ -1,0 +1,16 @@
+---
+title: "Roopali_FML Assignment_1"
+output: word_document
+date: "2024-02-04"
+---
+
+```{r}
+data(iris)
+df <- iris
+summary(df[, c("Sepal.Length", "Sepal.Width", "Petal.Length", "Petal.Width")])
+table(df$Species)
+df$Petal.Width <- df$Petal.Width^3
+hist(df$Sepal.Length, main = "Histogram of Sepal.Length", xlab = "S.L")
+plot(df$Petal.Length, df$Petal.Width, main = "Scatterplot of Petal.Length vs Petal.Width", 
+     xlab = "Length", ylab = "Width")
+```
