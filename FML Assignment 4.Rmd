@@ -1,0 +1,168 @@
+---
+title: "FML Assignment 4"
+author: "Roopali Aggarwal"
+date: "2024-03-14"
+output: html_document
+---
+Instructions - 
+An equities analyst is studying the pharmaceutical industry and would like your help in exploring and understanding the financial data collected by her firm. Her main objective is to understand the structure of the pharmaceutical industry using some basic financial measures.
+Use cluster analysis to explore and analyze the given dataset as follows:
+```{r}
+library(dplyr)
+library(tidyverse)
+library(caret)
+library(factoextra)
+library(flexclust)
+library(cluster)
+library(ISLR)
+library(ggplot2)
+library(lattice)
+library(dbscan)
+library(knitr)
+#Read the data using the working directory
+pharma.data <- read.csv("/Applications/Pharmaceuticals.csv")
+#Summary of the data, showing dimensions and structure
+summary(pharma.data)
+dim(pharma.data)
+str(pharma.data)
+```
+Qa.Use only the numerical variables (1 to 9) to cluster the 21 firms. Justify the various choices made in conducting the cluster analysis, such as weights for different variables, the specific clustering algorithm(s) used, the number of clusters formed, and so on.
+```{r}
+#Removing rows with missing values
+data <- na.omit(pharma.data)
+#Extracting only the numerical variables
+num.data <- data[, c(3:11)]
+num.data
+```
+```{r}
+#Standardizing the dataset
+data.norm <- preProcess(num.data , method = c("center", "scale"))
+pharma.norm = predict(data.norm , num.data)
+pharma.norm
+```
+```{r}
+#Finding the value of k using elbow and silhouette method
+fviz_nbclust(pharma.norm , kmeans , method = "wss") + labs(subtitle = "elbow method")
+fviz_nbclust(pharma.norm , kmeans , method = "silhouette") + labs(subtitle = "silhouette method")
+```
+The cluster analysis on the pharmaceutical industry dataset focused solely on numerical variables (1 to 9) to understand the industry's financial structure. After normalizing the data to ensure uniform influence of variables, both the elbow method and silhouette method were employed to determine the optimal number of clusters (k). The elbow method suggested a potential elbow point at k = 5, indicating a balance between capturing meaningful patterns and avoiding overfitting. This choice was further validated by the silhouette method, which indicated clear separation and cohesion within clusters at k = 5, supported by a high average silhouette width. Hence, based on both methods, k = 5 was identified as the most suitable number of clusters for the pharmaceutical industry dataset to help us understand their financial situations well.
+```{r}
+#creating clusters using kmeans
+set.seed(600)
+cluster <- kmeans(pharma.norm, centers = 5)
+cluster
+```
+```{r}
+fviz_cluster(cluster , data = pharma.norm)
+```
+```{r}
+#creating clusters using dbscan
+# finding the optimal value of eps
+dbscan::kNNdistplot(pharma.norm , k=3)
+abline(h = 3.5)
+pharma.db <- dbscan::dbscan(pharma.norm , eps = 3.5 , minPts = 3) 
+fviz_cluster(pharma.db , pharma.norm)
+```
+```{r}
+#creating clusters using hierarchical method
+pharma.single <- agnes(pharma.norm , method = "single") 
+pharma.complete <- agnes(pharma.norm , method = "complete") 
+pharma.average <- agnes(pharma.norm , method = "average")
+pharma.single
+pharma.complete
+pharma.average
+```
+```{r}
+#Using pharma.complete since it has highest agglomerative function
+distance <- dist(pharma.norm , method = "euclidean") 
+pharma.complete.2 <- hclust(distance, method = "complete") 
+plot(pharma.complete.2 , cex = 0.9) 
+rect.hclust(pharma.complete.2 , k=5 , border=3:6)
+```
+The cluster analysis decisions were carefully thought out to make sure we get good insights from the data. First, the data was normalized by putting them on the same scale. Then, we explored three clustering methods - k-means, DBSCAN, and hierarchical clustering. We found that k-means split the data into 5 clear clusters, DBSCAN just squished everything into 1 cluster with 1 outlier and hierarchical clustering has 2 outliers showing potential limitations. Given the dataset's financial nature, we decided to stick with k-means because it seemed to show the data's patterns better. Unlike DBSCAN and hierarchical clustering, which exhibited outliers, k-means revealed a more cohesive clustering pattern without significant outliers.
+
+Qb.Interpret the clusters with respect to the numerical variables used in forming the clusters.
+```{r}
+#Viewing the data points in order to interpret the 5 clusters created using kmeans method
+cluster1 <- kable(pharma.norm[c(12,14,9,8),], align = "c")
+cluster1
+```
+Firms in Cluster 1 exhibit characteristics of low market capitalization, moderate volatility, varying levels of profitability (with some firms struggling to generate profits), and high revenue growth. The cluster includes firms with both positive and negative financial performance metrics, suggesting a diverse range of financial health within the cluster.
+```{r}
+cluster2 <- kable(pharma.norm[c(21,7,10,4,16,1,19),], align = "c")
+cluster2
+```
+Firms in Cluster 2 represents a diverse mix of financial characteristics among the included firms. While many exhibit positive returns on equity (ROE) and assets (ROA), indicative of profitability and operational efficiency, there are also companies facing challenges such as negative revenue growth. Net profit margin varies, with all firms exhibiting positive margins, indicating profitability across the cluster.
+```{r}
+cluster3 <- kable(pharma.norm[c(5,20,3),], align = "c")
+cluster3
+```
+Firms in Cluster 3 exhibit characteristics of relatively small market capitalization, moderate to low volatility (as indicated by moderate to low beta), moderate to low valuation (as indicated by moderate to low PE ratio), negative ROE and ROA, average asset turnover, lower leverage, and varying levels of profitability. Notably, they show high revenue growth, indicating strong sales performance despite moderate profitability.
+```{r}
+cluster4 <- kable(pharma.norm[c(18,6,2),], align = "c")
+cluster4
+```
+Firms in Cluster 4 exhibit characteristics of relatively small market capitalization, high volatility (as indicated by high beta), and poor financial performance (as indicated by negative ROE and ROA, low revenue growth, and low net profit margin).
+```{r}
+cluster5 <- kable(pharma.norm[c(11,17,13,15),], align = "c")
+cluster5
+```
+Firms in cluster 5 comprises firms with strong financial performance, characterized by high profitability metrics such as ROE and ROA, along with positive net profit margins. The cluster also demonstrates efficient asset utilization and relatively high market capitalization, indicating robust financial health among the included firms.
+
+Qc. Is there a pattern in the clusters with respect to the numerical variables (10 to 12)
+```{r}
+#Identifying the patter of remaining variables
+kcluster <- cluster$cluster
+Pattern <- pharma.data %>% 
+  select(c(1,2,12,13,14)) %>% 
+  mutate(Cluster = kcluster)
+Pattern
+```
+```{r}
+#Plotting the data points to find the pattern
+ggplot(Pattern, aes(x = factor(Cluster), fill = Median_Recommendation)) + 
+  geom_bar() + labs(x = "Cluster", y = "Count", fill = "Median Recommendation")
+ggplot(Pattern, aes(x = factor(Cluster), fill = Location)) + 
+  geom_bar() + labs(x = "Cluster", y = "Count", fill = "Location")
+ggplot(Pattern, aes(x = factor(Cluster), fill = Exchange)) + 
+  geom_bar() + labs(x = "Cluster", y = "Count", fill = "Exchange")
+```
+Analyses:
+Graph 1 (Median Recommendation by Cluster):
+Observations: Cluster 1, 2, 4, and 5 predominantly receive "Hold" recommendations, with varying levels of "Moderate Buy" and "Sell" recommendations. Cluster 3 stands out with a mix of "Strong Buy" and "Moderate Buy" recommendations, along with some "Moderate Sell" recommendations.
+
+Graph 2 (Location by Cluster):
+Observations: Companies in Cluster 1, 2, and 5 are primarily located in the United States. Cluster 3 includes companies from the United States, the United Kingdom, and France. Cluster 4 comprises companies from the United States, Germany, and Canada.
+
+Graph 3 (Exchange by Cluster):
+Observations: Companies in Cluster 1 are listed on all three exchanges (NYSE, NASDAQ, and LSE), while those in Cluster 3 are listed only on NYSE. Clusters 2, 4, and 5 also have companies listed predominantly on NYSE, indicating a concentration of companies from these clusters in this exchange.
+
+Now linking the Graphs to see a pattern:
+
+Cluster 1: Predominantly receives "Moderate buy" recommendations, primarily consists of companies from the United States, and is listed on multiple exchanges.
+Cluster 2: Receives "Hold" recommendations, with companies primarily from the United States, UK, and Switzerland, and listed predominantly on NYSE.
+Cluster 3: Stands out with "Strong Buy" and "Moderate Buy" recommendations, includes companies from the United States, UK, and France, and is listed only on NYSE.
+Cluster 4: Receives "Hold" recommendations, includes companies from the United States, Germany, and Canada, and is listed predominantly on NYSE.
+Cluster 5: Equally receives "Hold and Moderate buy" recommendations, consists of companies from the United States and UK, and is listed predominantly on NYSE.
+
+This analysis provides a understanding of the clustering patterns, considering financial recommendations, geographical locations, and stock exchange listings. It helps identify distinct characteristics and trends within each cluster, aiding in decision-making processes such as investment strategies or industry analysis.
+
+Qd. Provide an appropriate name for each cluster using any or all of the variables in the dataset.
+
+After conducting a thorough analysis and examining the characteristics of each cluster, we can categorize the 21 pharmaceutical industries into five clusters:
+
+Cluster1 - Diverse Capital Ventures
+This cluster comprises firms with varying levels of market capitalization and profitability metrics, indicating a diverse range of growth prospects. Despite some firms struggling with profitability, the cluster shows high revenue growth potential, suggesting opportunities for growth and development.
+
+Cluster2 - Mixed Performance Enterprises
+Firms in this cluster exhibit a mix of financial characteristics, including positive returns on equity and assets alongside challenges such as negative revenue growth. The cluster demonstrates a spectrum of financial performance, reflecting a blend of strengths and weaknesses across included companies.
+
+Cluster3 - Growth Potential Innovators
+Companies in Cluster 3 display characteristics of relatively small market capitalization and moderate financial metrics. Despite facing challenges such as negative ROE and ROA, these firms show resilience with high revenue growth, indicating steady growth potential despite moderate profitability.
+
+Cluster4 - Volatility Strugglers
+Firms in this cluster exhibit relatively small market capitalization and high volatility, accompanied by poor financial performance metrics such as negative ROE and ROA. The cluster reflects companies struggling with volatility and financial stability, facing challenges in achieving sustainable growth and profitability.
+
+Cluster5 - Financial Powerhouses
+Cluster 5 comprises firms demonstrating strong financial performance, characterized by high profitability metrics such as ROE and ROA, positive net profit margins, and efficient asset utilization. The cluster represents industry leaders with robust financial health and performance, poised for continued success and leadership in the market.
+
